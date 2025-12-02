@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { Header, Sidebar } from '@/components';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';

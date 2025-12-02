@@ -3,7 +3,6 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { LayoutGrid, Calendar, Clock, CheckSquare, BookOpen, Zap, Settings, Palette } from 'lucide-react';
 import { useState } from 'react';
-import { Logo } from './Logo';
 import { useTheme } from '@/context/ThemeContext';
 
 export const Sidebar = () => {

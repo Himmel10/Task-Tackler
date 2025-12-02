@@ -4,6 +4,14 @@ import * as bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
+// GET not allowed for this endpoint
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
+}
+
 // POST quick demo user for testing
 export async function POST(request: NextRequest) {
   try {

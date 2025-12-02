@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { TaskProvider } from "@/context/TaskContext";
 import { AuthProvider } from "@/context/AuthContext";
 
+export const dynamic = 'force-dynamic';
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

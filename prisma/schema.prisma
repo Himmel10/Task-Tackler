@@ -1,0 +1,264 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  password      String
+  role          UserRole  @default(USER)
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLogin     DateTime?
+
+  // Relations
+  tasks         Task[]
+  subtasks      Subtask[]
+  notifications Notification[]
+  teamMembers   TeamMember[]
+  sharedTasks   SharedTask[] @relation("SharedTaskOwner")
+  accessibleTasks SharedTask[] @relation("SharedTaskUser")
+  exports       Export[]
+  teams         Team[]
+
+  @@index([email])
+  @@index([username])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  TEAM_LEAD
+}
+
+// Task model
+model Task {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  category      TaskCategory
+  priority      TaskPriority
+  status        TaskStatus  @default(TODO)
+  dueDate       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  completedAt   DateTime?
+  userId        String
+  teamId        String?
+
+  // Recurrence
+  recurrence    RecurrenceType  @default(NONE)
+  recurrenceEnd DateTime?
+
+  // Tags
+  tags          String[]
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subtasks      Subtask[]
+  notifications Notification[]
+  sharedWith    SharedTask[]
+  team          Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([teamId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum TaskCategory {
+  WORK
+  PERSONAL
+  SHOPPING
+  HEALTH
+  EDUCATION
+  OTHER
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+enum RecurrenceType {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// Subtask model
+model Subtask {
+  id          String    @id @default(cuid())
+  title       String
+  completed   Boolean   @default(false)
+  order       Int
+  taskId      String
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+// Notification model
+model Notification {
+  id          String    @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String
+  read        Boolean   @default(false)
+  userId      String
+  taskId      String?
+  createdAt   DateTime  @default(now())
+  sentAt      DateTime?
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([taskId])
+  @@index([read])
+}
+
+enum NotificationType {
+  DUE_SOON
+  OVERDUE
+  COMPLETED
+  ASSIGNED
+  REMINDER
+  SHARED
+  TEAM_INVITE
+}
+
+// Shared Task model
+model SharedTask {
+  id          String    @id @default(cuid())
+  taskId      String
+  ownerId     String
+  userId      String
+  permission  SharePermission @default(VIEW)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  owner       User      @relation("SharedTaskOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  user        User      @relation("SharedTaskUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@index([ownerId])
+  @@index([userId])
+}
+
+enum SharePermission {
+  VIEW
+  EDIT
+  MANAGE
+}
+
+// Team model
+model Team {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  leaderId    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  members     TeamMember[]
+  tasks       Task[]
+  leader      User      @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+
+  @@index([leaderId])
+}
+
+// Team Member model
+model TeamMember {
+  id          String    @id @default(cuid())
+  teamId      String
+  userId      String
+  role        TeamMemberRole @default(MEMBER)
+  joinedAt    DateTime  @default(now())
+
+  // Relations
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+enum TeamMemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+}
+
+// Export model
+model Export {
+  id          String    @id @default(cuid())
+  userId      String
+  format      ExportFormat
+  fileName    String
+  fileUrl     String?
+  taskCount   Int
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum ExportFormat {
+  CSV
+  JSON
+  PDF
+  EXCEL
+}
+
+// Activity Log model (for audit trail)
+model ActivityLog {
+  id          String    @id @default(cuid())
+  userId      String
+  action      String
+  description String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
